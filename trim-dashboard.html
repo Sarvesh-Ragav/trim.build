@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trim — Build Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;700&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0c0c0e;
+  --surface:#141416;
+  --surface2:#1c1c1f;
+  --border:#2a2a2e;
+  --accent:#c8f542;
+  --accent2:#a8d620;
+  --text:#f0ede6;
+  --muted:#666;
+  --muted2:#444;
+  --green:#4ade80;
+  --amber:#fbbf24;
+  --red:#f87171;
+  --blue:#60a5fa;
+  --syne:'Syne',sans-serif;
+  --mono:'DM Mono',monospace;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--syne);min-height:100vh;padding:0}
+
+header{
+  padding:28px 32px 20px;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;background:var(--bg);z-index:100;
+}
+.logo{font-size:20px;font-weight:700;letter-spacing:-0.5px}
+.logo span{color:var(--accent)}
+.phase-badge{
+  background:rgba(200,245,66,0.08);
+  border:1px solid rgba(200,245,66,0.2);
+  color:var(--accent);
+  font-size:11px;
+  font-family:var(--mono);
+  padding:5px 12px;
+  border-radius:100px;
+  letter-spacing:1px;
+}
+.last-updated{font-size:11px;font-family:var(--mono);color:var(--muted)}
+
+main{padding:28px 32px;max-width:1100px;margin:0 auto}
+
+.section-label{
+  font-size:10px;
+  font-family:var(--mono);
+  color:var(--muted);
+  letter-spacing:2px;
+  text-transform:uppercase;
+  margin-bottom:14px;
+  display:flex;align-items:center;gap:10px;
+}
+.section-label::after{content:'';flex:1;height:1px;background:var(--border)}
+
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:32px}
+.stat-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:18px 20px;
+}
+.stat-label{font-size:11px;font-family:var(--mono);color:var(--muted);margin-bottom:8px}
+.stat-value{font-size:26px;font-weight:700;letter-spacing:-1px}
+.stat-sub{font-size:11px;color:var(--muted);margin-top:4px;font-family:var(--mono)}
+.stat-value.green{color:var(--green)}
+.stat-value.amber{color:var(--amber)}
+.stat-value.accent{color:var(--accent)}
+
+.progress-bar-wrap{margin-top:8px}
+.progress-track{background:var(--border);border-radius:4px;height:4px;overflow:hidden}
+.progress-fill{height:100%;border-radius:4px;background:var(--accent);transition:width 0.6s ease}
+
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px}
+.full-col{margin-bottom:16px}
+
+.card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:20px 22px;
+}
+.card-header{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:16px;
+}
+.card-title{font-size:13px;font-weight:700;letter-spacing:0.3px}
+.card-count{font-size:11px;font-family:var(--mono);color:var(--muted)}
+
+.phase-header{
+  display:flex;align-items:center;gap:10px;margin-bottom:14px;
+}
+.phase-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.phase-dot.active{background:var(--accent);box-shadow:0 0 8px var(--accent)}
+.phase-dot.pending{background:var(--muted2)}
+.phase-dot.done{background:var(--green)}
+.phase-name{font-size:13px;font-weight:700}
+.phase-timeline{font-size:11px;font-family:var(--mono);color:var(--muted);margin-left:auto}
+
+.task-list{display:flex;flex-direction:column;gap:6px}
+.task{
+  display:flex;align-items:flex-start;gap:10px;
+  padding:10px 12px;
+  border-radius:8px;
+  background:var(--surface2);
+  border:1px solid transparent;
+  cursor:pointer;
+  transition:all 0.15s;
+  user-select:none;
+}
+.task:hover{border-color:var(--border)}
+.task.done{opacity:0.45}
+.task.done .task-text{text-decoration:line-through;color:var(--muted)}
+.task.urgent{border-left:2px solid var(--accent)}
+.task.urgent .task-text{color:var(--text)}
+
+.checkbox{
+  width:16px;height:16px;
+  border:1px solid var(--muted2);
+  border-radius:4px;
+  flex-shrink:0;
+  margin-top:1px;
+  display:flex;align-items:center;justify-content:center;
+  transition:all 0.15s;
+}
+.task.done .checkbox{
+  background:var(--green);
+  border-color:var(--green);
+}
+.checkbox-tick{
+  width:8px;height:6px;
+  border-left:1.5px solid #000;
+  border-bottom:1.5px solid #000;
+  transform:rotate(-45deg) translateY(-1px);
+  display:none;
+}
+.task.done .checkbox-tick{display:block}
+
+.task-text{font-size:13px;font-weight:400;line-height:1.4;flex:1}
+.task-tag{
+  font-size:10px;
+  font-family:var(--mono);
+  padding:2px 7px;
+  border-radius:100px;
+  flex-shrink:0;
+  margin-top:2px;
+}
+.tag-now{background:rgba(200,245,66,0.1);color:var(--accent)}
+.tag-code{background:rgba(96,165,250,0.1);color:var(--blue)}
+.tag-research{background:rgba(251,191,36,0.1);color:var(--amber)}
+.tag-design{background:rgba(167,139,250,0.1);color:#a78bfa}
+.tag-ship{background:rgba(74,222,128,0.1);color:var(--green)}
+
+.divider{height:1px;background:var(--border);margin:10px 0}
+
+.note-card{
+  background:rgba(200,245,66,0.04);
+  border:1px solid rgba(200,245,66,0.12);
+  border-radius:10px;
+  padding:14px 16px;
+  margin-bottom:16px;
+  font-size:12px;
+  color:#b0c870;
+  font-family:var(--mono);
+  line-height:1.7;
+}
+.note-card strong{color:var(--accent)}
+
+.rule-list{display:flex;flex-direction:column;gap:8px}
+.rule{
+  display:flex;gap:12px;align-items:flex-start;
+  padding:10px 12px;
+  background:var(--surface2);
+  border-radius:8px;
+  font-size:12px;
+  line-height:1.5;
+}
+.rule-num{
+  font-family:var(--mono);
+  color:var(--accent);
+  font-size:11px;
+  flex-shrink:0;
+  margin-top:1px;
+}
+
+.decision-list{display:flex;flex-direction:column;gap:6px}
+.decision{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:9px 12px;
+  background:var(--surface2);
+  border-radius:8px;
+  font-size:12px;
+}
+.decision-q{color:var(--muted);font-family:var(--mono);font-size:11px}
+.decision-a{color:var(--text);font-weight:500;font-size:12px;text-align:right;max-width:55%}
+
+.blocker-list{display:flex;flex-direction:column;gap:8px}
+.blocker{
+  display:flex;gap:12px;
+  padding:12px 14px;
+  border-radius:8px;
+  border-left:2px solid;
+  background:var(--surface2);
+  font-size:12px;line-height:1.5;
+}
+.blocker.high{border-color:var(--red)}
+.blocker.med{border-color:var(--amber)}
+.blocker.low{border-color:var(--blue)}
+.blocker-label{font-family:var(--mono);font-size:10px;flex-shrink:0;margin-top:2px}
+.blocker.high .blocker-label{color:var(--red)}
+.blocker.med .blocker-label{color:var(--amber)}
+.blocker.low .blocker-label{color:var(--blue)}
+
+.mini-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mini-item{
+  padding:10px 12px;
+  background:var(--surface2);
+  border-radius:8px;
+  font-size:12px;
+}
+.mini-item-label{font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:4px}
+.mini-item-val{font-size:13px;font-weight:500}
+.mini-item-val.free{color:var(--green)}
+.mini-item-val.cost{color:var(--amber)}
+
+footer{
+  border-top:1px solid var(--border);
+  padding:16px 32px;
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:11px;font-family:var(--mono);color:var(--muted);
+  max-width:1100px;margin:0 auto;
+}
+
+@media(max-width:700px){
+  .stats-row{grid-template-columns:1fr 1fr}
+  .two-col,.three-col{grid-template-columns:1fr}
+  main{padding:20px 16px}
+  header{padding:16px}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">trim<span>.</span>build</div>
+  <div style="display:flex;align-items:center;gap:16px">
+    <div class="phase-badge">PHASE 1 — RESEARCH</div>
+    <div class="last-updated" id="date-display"></div>
+  </div>
+</header>
+
+<main>
+
+<div class="note-card">
+  <strong>Your personal rule:</strong> One screen. One week. Use it yourself. Then the next screen. — You are technically solid. The only enemy is scope creep and burnout. This dashboard keeps you honest.
+</div>
+
+<div class="section-label">overview</div>
+<div class="stats-row">
+  <div class="stat-card">
+    <div class="stat-label">Overall progress</div>
+    <div class="stat-value accent" id="overall-pct">0%</div>
+    <div class="progress-bar-wrap">
+      <div class="progress-track"><div class="progress-fill" id="overall-bar" style="width:0%"></div></div>
+    </div>
+    <div class="stat-sub" id="overall-sub">0 of 0 tasks done</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Current phase</div>
+    <div class="stat-value amber">Phase 1</div>
+    <div class="stat-sub">Research &amp; setup</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Survey responses</div>
+    <div class="stat-value green">Live</div>
+    <div class="stat-sub">jointrim.in active</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Monthly budget</div>
+    <div class="stat-value accent">₹800</div>
+    <div class="stat-sub">Domain only right now</div>
+  </div>
+</div>
+
+<div class="section-label">immediate actions — do these first</div>
+<div class="full-col">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">This week — before any code</div>
+      <div class="card-count" id="immediate-count"></div>
+    </div>
+    <div class="task-list" id="immediate-tasks">
+      <div class="task urgent" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Apply for Anthropic student API credits ($50 free) — anthropic.com/students</div>
+        <div class="task-tag tag-now">TODAY</div>
+      </div>
+      <div class="task urgent" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Apply for GitHub Student Developer Pack — free domain + cloud credits</div>
+        <div class="task-tag tag-now">TODAY</div>
+      </div>
+      <div class="task urgent" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Set up cron-job.org to ping Supabase every 5 days — prevents free tier pausing</div>
+        <div class="task-tag tag-now">TODAY</div>
+      </div>
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Post survey to r/IndianFitness and r/bodyrecomposition (space 2 days apart)</div>
+        <div class="task-tag tag-research">RESEARCH</div>
+      </div>
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Wait for 30–50 survey responses before writing any code</div>
+        <div class="task-tag tag-research">RESEARCH</div>
+      </div>
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Write a batch prompt script to pre-populate 150 Indian dishes into food cache — one API call, done once</div>
+        <div class="task-tag tag-code">CODE</div>
+      </div>
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Register Strava developer account and read their API docs — free, needed before integration</div>
+        <div class="task-tag tag-research">RESEARCH</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section-label">build phases</div>
+<div class="two-col">
+
+  <div class="card">
+    <div class="phase-header">
+      <div class="phase-dot active"></div>
+      <div class="phase-name">Phase 1 — Foundation</div>
+      <div class="phase-timeline">Month 1</div>
+    </div>
+    <div class="task-list" id="phase1-tasks">
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Supabase project setup + all tables created</div>
+        <div class="task-tag tag-code">CODE</div>
+      </div>
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Auth flow — email signup + login working</div>
+        <div class="task-tag tag-code">CODE</div>
+      </div>
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Local SQLite setup with Supabase sync</div>
+        <div class="task-tag tag-code">CODE</div>
+      </div>
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Onboarding — all 7 screens with target calculation (Mifflin-St Jeor)</div>
+        <div class="task-tag tag-code">CODE</div>
+      </div>
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Today screen — 3 rings (calories, protein, water) rendering correctly</div>
+        <div class="task-tag tag-code">CODE</div>
+      </div>
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Weight entry card on Today screen — saving to DB</div>
+        <div class="task-tag tag-code">CODE</div>
+      </div>
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Use app on your own phone for 7 days straight before moving to Phase 2</div>
+        <div class="task-tag tag-ship">SHIP</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="phase-header">
+      <div class="phase-dot pending"></div>
+      <div class="phase-name">Phase 2 — Core Loop</div>
+      <div class="phase-timeline">Month 2</div>
+    </div>
+    <div class="task-list" id="phase2-tasks">
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Text food logging — bottom sheet, Claude Haiku parsing, itemised breakdown</div>
+        <div class="task-tag tag-code">CODE</div>
+      </div>
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">3-layer food cache — personal library + Indian cache + API fallback</div>
+        <div class="task-tag tag-code">CODE</div>
+      </div>
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Barcode scanner — Open Food Facts API integration</div>
+        <div class="task-tag tag-code">CODE</div>
+      </div>
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Quick-add section — top 6 by frequency + 4 recent</div>
+        <div class="task-tag tag-code">CODE</div>
+      </div>
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Yesterday + free backdating logic — premium gate for 2+ days ago</div>
+        <div class="task-tag tag-code">CODE</div>
+      </div>
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Weight trend graph — raw dots + 7-day rolling average overlay</div>
+        <div class="task-tag tag-code">CODE</div>
+      </div>
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Strava OAuth2 connection + activity auto-import</div>
+        <div class="task-tag tag-code">CODE</div>
+      </div>
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Body recomp combo graph — weight down + volume up on same chart</div>
+        <div class="task-tag tag-code">CODE</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="two-col">
+  <div class="card">
+    <div class="phase-header">
+      <div class="phase-dot pending"></div>
+      <div class="phase-name">Phase 3 — Stickiness</div>
+      <div class="phase-timeline">Month 3</div>
+    </div>
+    <div class="task-list">
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Streak system — daily log detection + streak counter</div>
+        <div class="task-tag tag-code">CODE</div>
+      </div>
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Push notifications — meal reminders (1pm, 8pm), water nudge (3pm), streak alert (9:30pm)</div>
+        <div class="task-tag tag-code">CODE</div>
+      </div>
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">AI coach daily message — batched overnight, Haiku model</div>
+        <div class="task-tag tag-code">CODE</div>
+      </div>
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">History screen — calendar view, tap any day to see full log</div>
+        <div class="task-tag tag-code">CODE</div>
+      </div>
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Calorie consistency bar chart — 14 days with target line</div>
+        <div class="task-tag tag-code">CODE</div>
+      </div>
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Protein hit rate calendar — green/amber/red per day</div>
+        <div class="task-tag tag-code">CODE</div>
+      </div>
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Distribute via Expo Go to 10 friends — no Apple account needed yet</div>
+        <div class="task-tag tag-ship">SHIP</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="phase-header">
+      <div class="phase-dot pending"></div>
+      <div class="phase-name">Phase 4 — Social</div>
+      <div class="phase-timeline">Month 4–5</div>
+    </div>
+    <div class="task-list">
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Workout logging screen — sets, reps, weight, rest timer</div>
+        <div class="task-tag tag-code">CODE</div>
+      </div>
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Hevy import — one-tap workout history pull</div>
+        <div class="task-tag tag-code">CODE</div>
+      </div>
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Clan creation + invite system (private) + discovery (public)</div>
+        <div class="task-tag tag-code">CODE</div>
+      </div>
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">CPS scoring engine — 5 pillars, midnight snapshots</div>
+        <div class="task-tag tag-code">CODE</div>
+      </div>
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">War matchmaking — division + avg CPS per member</div>
+        <div class="task-tag tag-code">CODE</div>
+      </div>
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Anti-cheat layer — AI flag, 3-meal min, photo verified war mode</div>
+        <div class="task-tag tag-code">CODE</div>
+      </div>
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Pay Apple ₹8,300 — submit to TestFlight for 50-user beta</div>
+        <div class="task-tag tag-ship">SHIP</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="two-col">
+  <div class="card">
+    <div class="phase-header">
+      <div class="phase-dot pending"></div>
+      <div class="phase-name">Phase 5 — Launch</div>
+      <div class="phase-timeline">Month 6</div>
+    </div>
+    <div class="task-list">
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">RevenueCat subscription integration — ₹199/month + ₹1499/year</div>
+        <div class="task-tag tag-code">CODE</div>
+      </div>
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">14-day trial logic + day 13 conversion notification</div>
+        <div class="task-tag tag-code">CODE</div>
+      </div>
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Invite system — share link → both get 30 days premium</div>
+        <div class="task-tag tag-code">CODE</div>
+      </div>
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Weekly AI report — Sonnet model, Monday AM batch generation</div>
+        <div class="task-tag tag-code">CODE</div>
+      </div>
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">League system — Bronze/Silver/Gold/Elite + promotion/relegation</div>
+        <div class="task-tag tag-code">CODE</div>
+      </div>
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Google Play Store submission — ₹2,100 one-time</div>
+        <div class="task-tag tag-ship">SHIP</div>
+      </div>
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Influencer outreach — send to 5 gym influencers with Hevy users</div>
+        <div class="task-tag tag-ship">SHIP</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="phase-header">
+      <div class="phase-dot pending"></div>
+      <div class="phase-name">Phase 6 — v2 Features</div>
+      <div class="phase-timeline">Month 7+</div>
+    </div>
+    <div class="task-list">
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Home screen widget — iOS WidgetKit + Android Glance</div>
+        <div class="task-tag tag-code">CODE</div>
+      </div>
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Photo scan — optional secondary food logging method</div>
+        <div class="task-tag tag-code">CODE</div>
+      </div>
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Bluetooth gym machine FTMS connection</div>
+        <div class="task-tag tag-code">CODE</div>
+      </div>
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Deficit Week special events system</div>
+        <div class="task-tag tag-code">CODE</div>
+      </div>
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Head-to-head 1v1 challenge mode</div>
+        <div class="task-tag tag-code">CODE</div>
+      </div>
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Clan CPS bar chart + member contribution view</div>
+        <div class="task-tag tag-design">DESIGN</div>
+      </div>
+      <div class="task" onclick="toggleTask(this)">
+        <div class="checkbox"><div class="checkbox-tick"></div></div>
+        <div class="task-text">Full macro tracking — carbs + fat added alongside calories + protein</div>
+        <div class="task-tag tag-code">CODE</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="two-col">
+  <div class="card">
+    <div class="card-header"><div class="card-title">Known blockers</div></div>
+    <div class="blocker-list">
+      <div class="blocker high">
+        <div class="blocker-label">HIGH</div>
+        <div>Apple Developer Account costs ₹8,300/year — delay until Month 4. Use Expo Go for all testing before then.</div>
+      </div>
+      <div class="blocker high">
+        <div class="blocker-label">HIGH</div>
+        <div>Solo developer — scope is your enemy. Never add a feature mid-phase. Finish the phase, then reassess.</div>
+      </div>
+      <div class="blocker med">
+        <div class="blocker-label">MED</div>
+        <div>Supabase free tier pauses after 7 days inactivity. Set cron-job.org ping immediately.</div>
+      </div>
+      <div class="blocker med">
+        <div class="blocker-label">MED</div>
+        <div>Claude API costs rise fast without caching. Build food cache in Phase 2 before opening to users.</div>
+      </div>
+      <div class="blocker low">
+        <div class="blocker-label">LOW</div>
+        <div>Widget is hardest technical feature — native code required. Defer to v2 no matter how tempting.</div>
+      </div>
+      <div class="blocker low">
+        <div class="blocker-label">LOW</div>
+        <div>Strava API rate limit: 100 requests/15 min, 1000/day. Design polling to batch, not per-user-open.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><div class="card-title">Personal rules — read when overwhelmed</div></div>
+    <div class="rule-list">
+      <div class="rule"><div class="rule-num">01</div><div>One screen. One week. Use it yourself. Then the next screen.</div></div>
+      <div class="rule"><div class="rule-num">02</div><div>Never add a feature that isn't on the scribble pad. New ideas go in a backlog, not into the current build.</div></div>
+      <div class="rule"><div class="rule-num">03</div><div>If you haven't opened the app yourself in 3 days, stop building features and fix whatever's making you avoid it.</div></div>
+      <div class="rule"><div class="rule-num">04</div><div>Survey responses first, code second. Real users beat assumptions every time.</div></div>
+      <div class="rule"><div class="rule-num">05</div><div>Use Haiku for everything until you have a reason not to. Sonnet is for weekly reports only.</div></div>
+      <div class="rule"><div class="rule-num">06</div><div>Commit to GitHub every single session, even if it's 20 lines. The commit history is your progress journal.</div></div>
+      <div class="rule"><div class="rule-num">07</div><div>When college gets heavy, maintain not build. Open the app, log your own food, check the streak. Don't go dark.</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="section-label">budget tracker</div>
+<div class="three-col">
+  <div class="card">
+    <div class="card-header"><div class="card-title">Free right now</div></div>
+    <div class="mini-grid">
+      <div class="mini-item"><div class="mini-item-label">Supabase</div><div class="mini-item-val free">₹0/mo</div></div>
+      <div class="mini-item"><div class="mini-item-label">Vercel</div><div class="mini-item-val free">₹0/mo</div></div>
+      <div class="mini-item"><div class="mini-item-label">Expo</div><div class="mini-item-val free">₹0/mo</div></div>
+      <div class="mini-item"><div class="mini-item-label">Claude API</div><div class="mini-item-val free">$50 credits</div></div>
+      <div class="mini-item"><div class="mini-item-label">PostHog</div><div class="mini-item-val free">₹0/mo</div></div>
+      <div class="mini-item"><div class="mini-item-label">Sentry</div><div class="mini-item-val free">₹0/mo</div></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><div class="card-title">Unavoidable costs</div></div>
+    <div class="mini-grid">
+      <div class="mini-item"><div class="mini-item-label">Domain</div><div class="mini-item-val cost">₹800 once</div></div>
+      <div class="mini-item"><div class="mini-item-label">Apple Dev</div><div class="mini-item-val cost">₹8,300/yr</div></div>
+      <div class="mini-item"><div class="mini-item-label">Google Play</div><div class="mini-item-val cost">₹2,100 once</div></div>
+      <div class="mini-item"><div class="mini-item-label">API (cached)</div><div class="mini-item-val cost">~₹800/mo</div></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><div class="card-title">Break-even point</div></div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="mini-item"><div class="mini-item-label">Premium price</div><div class="mini-item-val" style="color:var(--accent)">₹199/month</div></div>
+      <div class="mini-item"><div class="mini-item-label">Users needed</div><div class="mini-item-val" style="color:var(--accent)">60 subscribers</div></div>
+      <div class="mini-item"><div class="mini-item-label">Total to launch</div><div class="mini-item-val cost">~₹18,000</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="section-label">key decisions locked</div>
+<div class="full-col">
+  <div class="card">
+    <div class="decision-list">
+      <div class="decision"><div class="decision-q">Primary food logging method</div><div class="decision-a">Text description (AI parses) — photo is secondary</div></div>
+      <div class="decision"><div class="decision-q">Backdating policy</div><div class="decision-a">Yesterday free always. 2+ days ago = premium only</div></div>
+      <div class="decision"><div class="decision-q">AI model split</div><div class="decision-a">Haiku for food + coach. Sonnet for weekly reports only</div></div>
+      <div class="decision"><div class="decision-q">Clan size</div><div class="decision-a">2–10 members. Public clans open-join, leader can kick</div></div>
+      <div class="decision"><div class="decision-q">War duration</div><div class="decision-a">Weekly, resets every Monday. Season = 8 wars</div></div>
+      <div class="decision"><div class="decision-q">Tracking targets</div><div class="decision-a">Calories + protein + water. Full macros in v2</div></div>
+      <div class="decision"><div class="decision-q">Competitor strategy</div><div class="decision-a">Never market against Hevy. Let the combined dashboard speak</div></div>
+      <div class="decision"><div class="decision-q">Widget</div><div class="decision-a">Deferred to v2. Too complex for solo MVP</div></div>
+      <div class="decision"><div class="decision-q">Strava integration</div><div class="decision-a">Phase 2. OAuth2, auto-import activities + calories burned</div></div>
+      <div class="decision"><div class="decision-q">Distribution Phase 1–3</div><div class="decision-a">Expo Go → TestFlight → App Store + Play Store</div></div>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<footer>
+  <div>trim.build — personal project dashboard</div>
+  <div id="footer-count"></div>
+</footer>
+
+<script>
+function toggleTask(el) {
+  el.classList.toggle('done');
+  saveState();
+  updateStats();
+}
+
+function saveState() {
+  const tasks = document.querySelectorAll('.task');
+  const state = Array.from(tasks).map(t => t.classList.contains('done'));
+  localStorage.setItem('trim_tasks', JSON.stringify(state));
+}
+
+function loadState() {
+  const saved = localStorage.getItem('trim_tasks');
+  if (!saved) return;
+  const state = JSON.parse(saved);
+  const tasks = document.querySelectorAll('.task');
+  tasks.forEach((t, i) => {
+    if (state[i]) t.classList.add('done');
+  });
+}
+
+function updateStats() {
+  const all = document.querySelectorAll('.task');
+  const done = document.querySelectorAll('.task.done');
+  const total = all.length;
+  const completed = done.length;
+  const pct = total ? Math.round((completed / total) * 100) : 0;
+
+  document.getElementById('overall-pct').textContent = pct + '%';
+  document.getElementById('overall-bar').style.width = pct + '%';
+  document.getElementById('overall-sub').textContent = completed + ' of ' + total + ' tasks done';
+  document.getElementById('footer-count').textContent = completed + '/' + total + ' tasks completed';
+
+  const immTasks = document.querySelectorAll('#immediate-tasks .task');
+  const immDone = document.querySelectorAll('#immediate-tasks .task.done');
+  document.getElementById('immediate-count').textContent = immDone.length + '/' + immTasks.length + ' done';
+
+  const p1Tasks = document.querySelectorAll('#phase1-tasks .task');
+  const p1Done = document.querySelectorAll('#phase1-tasks .task.done');
+  if(document.getElementById('phase1-count')) document.getElementById('phase1-count').textContent = p1Done.length + '/' + p1Tasks.length;
+}
+
+document.getElementById('date-display').textContent = new Date().toLocaleDateString('en-IN', {weekday:'short', day:'numeric', month:'short', year:'numeric'});
+
+loadState();
+updateStats();
+</script>
+</body>
+</html>
